@@ -3,16 +3,65 @@ import { useCallback, useState } from "react";
 import { z } from "zod";
 
 export const difficulties = [
-  { label: "Standard: Easy", code: 104, short: "easy" },
-  { label: "Standard: Normal", code: 105, short: "normal" },
-  { label: "Standard: Hard", code: 106, short: "hard" },
-  { label: "Standard: Very Hard", code: 141, short: "very_hard" },
-  { label: "Kaizo: Beginner", code: 196, short: "kaizo_beginner" },
-  { label: "Kaizo: Intermediate", code: 107, short: "kaizo_light" },
-  { label: "Kaizo: Expert", code: 197, short: "kaizo_expoert" },
-  { label: "Tool Assisted: Kaizo", code: 124, short: "kaizo_hard" },
-  { label: "Tool Assisted: Pit", code: 125, short: "pit" },
-  { label: "Misc.: Troll", code: 161, short: "troll" },
+  { label: "Standard: Easy", code: 104, short: "easy", gameType: "smw" },
+  { label: "Standard: Normal", code: 105, short: "normal", gameType: "smw" },
+  { label: "Standard: Hard", code: 106, short: "hard", gameType: "smw" },
+  {
+    label: "Standard: Very Hard",
+    code: 141,
+    short: "very_hard",
+    gameType: "smw",
+  },
+  {
+    label: "Kaizo: Beginner",
+    code: 196,
+    short: "kaizo_beginner",
+    gameType: "smw",
+  },
+  {
+    label: "Kaizo: Intermediate",
+    code: 107,
+    short: "kaizo_light",
+    gameType: "smw",
+  },
+  {
+    label: "Kaizo: Expert",
+    code: 197,
+    short: "kaizo_expoert",
+    gameType: "smw",
+  },
+  {
+    label: "Tool Assisted: Kaizo",
+    code: 124,
+    short: "kaizo_hard",
+    gameType: "smw",
+  },
+  { label: "Tool Assisted: Pit", code: 125, short: "pit", gameType: "smw" },
+  { label: "Misc.: Troll", code: 161, short: "troll", gameType: "smw" },
+  {
+    label: "Easy",
+    code: 204,
+    short: "easy",
+    gameType: "sm64",
+  },
+  {
+    label: "Intermediate",
+    code: 205,
+    short: "intermediate",
+    gameType: "sm64",
+  },
+  {
+    label: "Hard",
+    code: 206,
+    short: "easy",
+    gameType: "sm64",
+  },
+  {
+    label: "Kaizo",
+    code: 207,
+    short: "kaizo",
+    gameType: "sm64",
+  },
 ] as const;
 
 export type Difficulty = (typeof difficulties)[number]["label"];
@@ -35,7 +84,7 @@ export type Hack = z.infer<typeof HackSchema>;
 export type SearchArgs = {
   author: string;
   description: string;
-  game: "smwhacks" | "yihacks";
+  game: "smwhacks" | "yihacks" | "sm64hacks";
   isDifficultySelected: DifficultyMap;
   name: string;
   cookie?: string;
@@ -119,6 +168,41 @@ const YoshiIslandResponseSchema = z
     showType: false,
   }));
 
+const SuperMario64ResponseSchema = z
+  .object({
+    current_page: z.number(),
+    last_page: z.number(),
+    data: z.array(
+      z
+        .object({
+          authors: z.array(
+            z.object({ name: z.string() }).transform((value) => value.name)
+          ),
+          download_url: z.string(),
+          downloads: z.number(),
+          name: z.string(),
+          fields: z.object({
+            difficulty: z.string(),
+            length: z.string(),
+          }),
+        })
+        .transform((value) => ({
+          authors: value.authors,
+          date: undefined,
+          downloadUrl: value.download_url,
+          downloads: value.downloads,
+          name: value.name,
+          type: value.fields.difficulty,
+          length: value.fields.length,
+        }))
+    ),
+  })
+  .transform((value) => ({
+    hacks: value.data,
+    hasMore: value.current_page < value.last_page,
+    showType: true,
+  }));
+
 const useSearchHacks = (): [
   (args: SearchArgs) => void,
   boolean,
@@ -155,7 +239,7 @@ const useSearchHacks = (): [
       if (author) url.searchParams.set("f[author]", author); // Author
       if (description) url.searchParams.set("f[description]", description); // Description
 
-      if (game === "smwhacks")
+      if (game === "smwhacks" || game === "sm64hacks")
         for (const difficulty of difficulties)
           if (isDifficultySelected[difficulty.label])
             url.searchParams.append("f[difficulty][]", difficulty.short);
@@ -172,11 +256,20 @@ const useSearchHacks = (): [
 
         // Parse response to find the hacks table.
         if (typeof data !== "string") throw new Error("Data is not a string");
-        setResults(
-          game === "smwhacks"
-            ? SuperMarioWorldResponseSchema.parse(JSON.parse(data))
-            : YoshiIslandResponseSchema.parse(JSON.parse(data))
-        );
+        switch (game) {
+          case "smwhacks":
+            setResults(SuperMarioWorldResponseSchema.parse(JSON.parse(data)));
+            break;
+          case "yihacks":
+            setResults(YoshiIslandResponseSchema.parse(JSON.parse(data)));
+            break;
+          case "sm64hacks":
+            setResults(SuperMario64ResponseSchema.parse(JSON.parse(data)));
+            break;
+          default:
+            console.error("Invalid game type");
+            break;
+        }
       } catch (e) {
         setResults("An error occurred");
         console.log(e);

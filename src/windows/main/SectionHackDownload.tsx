@@ -40,6 +40,7 @@ const sanitizeHackName = (name: string): string => {
 function SectionHackDownload({ gameId }: SectionHackDownloadProps) {
   const [globalSettings] = useGlobalSettings();
   const [game] = useGame(gameId);
+  console.log(game.originalCopy);
   const [gameDownloadData, gameDownloadDataMethods] =
     useGameDownloadData(gameId);
 

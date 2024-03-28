@@ -19,38 +19,45 @@ type SectionHacksProps = {
 type Hack = {
   directory: string;
   name: string;
-  sfcName: string;
-  sfcPath: string;
+  romType: "sfc" | "z64";
+  romName: string;
+  romPath: string;
 };
 
 const isHack = (maybeHack: Partial<Hack>): maybeHack is Hack => {
   return (
     typeof maybeHack.directory === "string" &&
     typeof maybeHack.name === "string" &&
-    typeof maybeHack.sfcName === "string" &&
-    typeof maybeHack.sfcPath === "string"
+    typeof maybeHack.romName === "string" &&
+    typeof maybeHack.romPath === "string"
   );
 };
 
 const readGameDirectory = async (gameDirectory: string): Promise<Hack[]> => {
-  const hacks = (await readDir(gameDirectory, { recursive: true }))
-    .map((directory) => ({
-      directory: directory.path,
-      name: directory.name ?? "-",
-      sfcName: directory.children?.find((child) => child.name?.endsWith(".sfc"))
-        ?.name,
-      sfcPath: "",
-    }))
-    .filter(isHack)
-    .sort((hack1, hack2) => {
-      if (hack1.name < hack2.name) return -1;
-      if (hack1.name > hack2.name) return 1;
-      return 0;
-    });
-  for (const hack of hacks) {
-    hack.sfcPath = await path.join(hack.directory, hack.sfcName!);
+  const directories = await readDir(gameDirectory, { recursive: true });
+  const hacks: Hack[] = [];
+
+  for (const directory of directories) {
+    let romFile = directory.children?.find(
+      (child) => child.name?.endsWith(".sfc") || child.name?.endsWith(".z64")
+    );
+
+    if (romFile) {
+      const romType = romFile.name?.endsWith(".sfc") ? "sfc" : "z64";
+      const romName = romFile.name ?? "";
+      const romPath = await path.join(directory.path, romName);
+
+      hacks.push({
+        directory: directory.path,
+        name: directory.name ?? "-",
+        romType,
+        romName,
+        romPath,
+      });
+    }
   }
-  return hacks;
+
+  return hacks.sort((hack1, hack2) => hack1.name.localeCompare(hack2.name));
 };
 
 const hacksTableColumns = [
@@ -60,7 +67,7 @@ const hacksTableColumns = [
   },
   {
     header: "SFC",
-    key: "sfcName" as const,
+    key: "romName" as const,
   },
 ];
 
@@ -86,12 +93,12 @@ function SectionHacks({ gameId }: SectionHacksProps) {
         onClick: (hack: Hack) => {
           if (globalSettings.emulatorPath) {
             invoke("open_with_selected_app", {
-              filePath: hack.sfcPath,
+              filePath: hack.romPath,
               emulatorPath: globalSettings.emulatorPath,
               emulatorArgs: globalSettings.emulatorArgs,
             });
           } else {
-            invoke("open_with_default_app", { path: hack.sfcPath });
+            invoke("open_with_default_app", { path: hack.romPath });
           }
         },
       },

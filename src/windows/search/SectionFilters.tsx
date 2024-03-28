@@ -22,10 +22,13 @@ type SectionFiltersProps = {
 const gameOptions = [
   { label: "Super Mario World", value: "smwhacks" as const },
   { label: "Yoshi Island", value: "yihacks" as const },
+  { label: "Super Mario 64", value: "sm64hacks" as const },
 ];
 
 function SectionFilters({ isSearching, onSearchHacks }: SectionFiltersProps) {
-  const [game, setGame] = useState<"smwhacks" | "yihacks">("smwhacks");
+  const [game, setGame] = useState<"smwhacks" | "yihacks" | "sm64hacks">(
+    "smwhacks"
+  );
   const [name, setName] = useState("");
   const [author, setAuthor] = useState("");
   const [description, setDescription] = useState("");
@@ -93,15 +96,33 @@ function SectionFilters({ isSearching, onSearchHacks }: SectionFiltersProps) {
 
         {game === "smwhacks" && (
           <Frame minChildWidth={160} placeholder="Difficulty">
-            {difficulties.map((difficulty) => (
-              <Checkbox
-                key={difficulty.label}
-                isDisabled={isSearching}
-                label={difficulty.label}
-                onChange={toggleDifficulty(difficulty.label)}
-                value={!!isDifficultySelected[difficulty.label]}
-              />
-            ))}
+            {difficulties
+              .filter((difficulty) => difficulty.gameType === "smw")
+              .map((difficulty) => (
+                <Checkbox
+                  key={difficulty.label}
+                  isDisabled={isSearching}
+                  label={difficulty.label}
+                  onChange={toggleDifficulty(difficulty.label)}
+                  value={!!isDifficultySelected[difficulty.label]}
+                />
+              ))}
+          </Frame>
+        )}
+
+        {game === "sm64hacks" && (
+          <Frame minChildWidth={160} placeholder="Difficulty">
+            {difficulties
+              .filter((difficulty) => difficulty.gameType === "sm64")
+              .map((difficulty) => (
+                <Checkbox
+                  key={difficulty.label}
+                  isDisabled={isSearching}
+                  label={difficulty.label}
+                  onChange={toggleDifficulty(difficulty.label)}
+                  value={!!isDifficultySelected[difficulty.label]}
+                />
+              ))}
           </Frame>
         )}
 

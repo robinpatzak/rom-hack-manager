@@ -219,6 +219,14 @@ async fn download_hack(
     return Err("Failed to retrieve Flips".into())
   }
 
+  // Detect what file type the original rom is
+  let game_original_path = Path::new(&game_original_copy);
+  let game_original_file_type = game_original_path.extension()
+    .and_then(|ext| ext.to_str())
+    .unwrap_or_default();
+
+  println!("{}", game_original_file_type);
+
   // Patch
   hack_directory_path.read_dir().unwrap()
     .filter_map(|res| res.ok())
@@ -226,7 +234,7 @@ async fn download_hack(
     .filter(|path| path.extension().map_or(false, |ext| ext == "bps"))
     .for_each(|bps_path| {
       let mut sfc_path = PathBuf::from(&bps_path);
-      sfc_path.set_extension("sfc");
+      sfc_path.set_extension(game_original_file_type);
       std::process::Command::new(&flips_path)
         .arg("--apply")
         .arg(&bps_path)
